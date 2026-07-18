@@ -31,18 +31,53 @@ export default {
         const hours = now.getUTCHours();
         const minutes = now.getUTCMinutes();
 
-        // 每30分钟必然执行的轻量任务（原来的 */30 逻辑）
+        // ============ cloud-mail 自己的任务 ============
+        // 每 30 分钟执行：刷新图表缓存（原来 */30 的任务）
         await analysisService.refreshEchartsCache({ env });
 
-        // 原来在另一个 cron（可能是 0 16 * * *）执行的全部任务
-        // 我们限定在 UTC 16:00 ～ 16:29 这个窗口执行（只执行一次，避免16:00和16:30重复触发）
+        // 每天 UTC 16:00~16:29 执行一次全部清理任务（原来另一个 cron 的任务）
         if (hours === 16 && minutes < 30) {
-            // 确保每天只执行一次，可以用一个 KV 标记，但为简单起见，通过时间窗口限制
             await verifyRecordService.clearRecord({ env });
             await userService.resetDaySendCount({ env });
             await emailService.completeReceiveAll({ env });
             await oauthService.clearNoBindOathUser({ env });
-            // 注意：refreshEchartsCache 上面已经执行过了，这里不用再调用
+            // refreshEchartsCache 在上面已经调用过了，这里不用重复
         }
-    },
+
+        // ============ 调用其他 Worker 的定时任务 ============
+        // 请根据你其他 Worker 的原 cron 表达式添加以下调用
+
+        // 示例：Worker-A 原来每小时整点执行（cron: 0 * * * *）
+        if (minutes < 5) {
+            await invokeWorker('worker-a', env.CRON_SECRET);
+        }
+
+        // 示例：Worker-B 原来每 10 分钟执行（cron: */10 * * * *）
+        if (minutes % 10 < 5) {
+            await invokeWorker('worker-b', env.CRON_SECRET);
+        }
+
+        // 如果有更多 Worker，照此添加 if 条件和 invokeWorker 调用
+        // 注意：每个 Worker 名替换为你实际的 Worker 名称
+    }
 };
+
+// 调用其他 Worker 的 /__cron 接口
+async function invokeWorker(workerName, secret) {
+    // 方式一：使用 workers.dev 默认域名（需替换为你的子域名）
+    const url = `https://${workerName}.你的账户子域名.workers.dev/__cron`;
+    
+    // 方式二（推荐）：使用 Service Bindings 无需公网，以后可优化
+
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${secret}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    } catch (e) {
+        console.error(`调用 ${workerName} 失败: ${e.message}`);
+    }
+}
