@@ -2,6 +2,9 @@ name = "cloud-mail"
 main = "src/index.js"
 compatibility_date = "2025-06-04"
 keep_vars = true
+# 关闭默认workers.dev预览域名，消除日志警告
+workers_dev = false
+preview_urls = false
 
 [observability]
 enabled = true
@@ -31,9 +34,9 @@ directory = "./dist"	#前端vue项目打包的静态资源存放位置,默认dis
 not_found_handling = "single-page-application"
 run_worker_first = true
 
-[triggers]
-crons = ["0 16 * * *"]	#每天晚上12点执行每日任务,刷新分析缓存
-
+# 先注释规避cron限额报错，清理账号名额后再取消注释
+# [triggers]
+# crons = ["0 16 * * *"]	#UTC16点，北京时间24点执行每日任务,刷新分析缓存
 
 [vars]
 #ai_model = ""			#ai模型,不填默认使用@cf/meta/llama-3.1-8b-instruct
