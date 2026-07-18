@@ -6,8 +6,6 @@ keep_vars = true
 [observability]
 enabled = true
 
-# 省略其他注释和绑定...
-
 [ai]
 binding = "ai"
 
@@ -18,11 +16,11 @@ not_found_handling = "single-page-application"
 run_worker_first = true
 
 [triggers]
-crons = ["*/5 * * * *"]   # 每5分钟触发一次，用于统一调度所有定时任务
+# 只保留一个 cron，每30分钟触发一次，用于统一调度所有任务
+crons = ["*/30 * * * *"]
 
 [vars]
-# 这里可以加一个共享密钥，用于内部调用认证
-CRON_SECRET = "你自定义的一个随机字符串"
+# 如果你需要其他变量，可以在这里添加，暂时不需要额外变量
 
 [build]
 command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"
